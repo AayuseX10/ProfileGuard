@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Facebook Profile Guard Adder</title>
+  <style>
+    body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
+    button { padding: 10px; margin: 10px; width: 80%; }
+    #profile { margin-top: 20px; }
+    #message { margin-top: 10px; font-weight: bold; color: green; }
+  </style>
+</head>
+<body>
+
+  <h2>Facebook Profile Guard Adder</h2>
+  <button onclick="facebookLogin()">Login with Facebook</button>
+
+  <div id="profile" style="display:none;">
+    <h3>Profile Information</h3>
+    <img id="profilePic" src="" alt="Profile Picture" style="width: 100px; height: 100px;"/>
+    <p id="profileName"></p>
+    <button onclick="enableProfileGuard()">Enable Profile Guard</button>
+  </div>
+
+  <p id="message"></p>
+
+  <script>
+    function facebookLogin() {
+      window.location.href = 'http://localhost:3000/auth/facebook';
+    }
+
+    async function fetchUserData() {
+      const params = new URLSearchParams(window.location.search);
+      const code = params.get('code');
+      
+      if (!code) {
+        return alert("Failed to retrieve the authentication code from Facebook.");
+      }
+
+      const response = await fetch(`http://localhost:3000/auth/facebook/callback?code=${code}`);
+      const result = await response.json();
+
+      if (result.success) {
+        document.getElementById("profilePic").src = result.userData.picture.data.url;
+        document.getElementById("profileName").innerText = result.userData.name;
+        document.getElementById("profile").style.display = "block";
+        localStorage.setItem("accessToken", result.accessToken);
+      } else {
+        alert(result.error || "Unknown error occurred.");
+      }
+    }
+
+    async function enableProfileGuard() {
+      const accessToken = localStorage.getItem("accessToken");
+      if (!accessToken) {
+        return alert("Please log in first!");
+      }
+
+      const response = await fetch("http://localhost:3000/enable-profile-guard", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionCookie: accessToken })
+      });
+
+      const result = await response.json();
+      if (result.success) {
+        document.getElementById("message").innerText = result.message;
+      } else {
+        document.getElementById("message").innerText = `Error: ${result.error}`;
+      }
+    }
+
+    if (window.location.search.includes('code')) {
+      fetchUserData();
+    }
+  </script>
+
+</body>
+</html>
